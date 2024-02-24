@@ -1,67 +1,93 @@
+`include "bus_module.v"
+`include "fifo_module.v"
+`include "tx_scheduler_top.v"
+
 module addr_decoder #(
     parameter READ_DELAY  = 1,
     parameter NUM_SW_INST = 5,
     parameter W_WIDTH = 8,
-    parameter OP_WIDTH = 32
+    parameter FRAME_WIDTH = 32
 )(
-    //IN-interface
-    clk, rst_n,
-    addr_in,
-    wr_data_in, rd_data_out,
-    wr_rd_op, valid_in, op_id_in,
-    ready_out, ready_id,
+    input clk, rst_n,
+    input enable_in,
+    input wr_rd_op, valid_in,
+    input [7:0] addr_in, op_id_in,
+    input [W_WIDTH-1:0] wr_data_in,
 
-    //OUT-interface
-    sw_addr_in,
-    sw_w_data_in, sw_rd_data_out,
-    wr_rd_s_in,
-    sel_en_in, ack_out
+    input  [W_WIDTH-1:0] rd_data_in,
+    input  [NUM_SW_INST-1:0] ack_in,//from switches
+
+    output [NUM_SW_INST-1:0] ready_out,
+    output [W_WIDTH-1:0] rd_data_out,
+    output [7:0] ready_op_id,
+
+    output [1:0] addr_out;//cause there are only 4 ports per sw, meaning 4 registers per sw
+    output [W_WIDTH-1:0] wr_data_out;
+  
+    output [NUM_SW_INST-1:0] sel_en_out;
+    output wr_rd_s_out;
+    
 );
 
-    //INPUT Interface
-    input clk, rst_n;
-    input reg[7:0] addr_in;
-    input reg[W_WIDTH-1:0] wr_data_in, op_id_in;
-    input wr_rd_op, valid_in;
-    output ready_out;
-    output reg[W_WIDTH-1:0] rd_data_out;
-    output reg[7:0] ready_id;
+    wire [FRAME_WIDTH-1:0] frame_bus2fifo_w;
+    wire [NUM_SW_INST-1:0] wr_en_bus2fifo_w;
 
-    //OUTPUT Interface
-    output reg[4:0] sw_addr_in;
-    output reg[W_WIDTH-1:0] sw_w_data_in;
-    input  reg[W_WIDTH-1:0] sw_rd_data_out;
-    output wr_rd_s_in;
-    input  ack_out[NUM_SW_INST];
-    output sel_en_in[NUM_SW_INST];
+    wire [FRAME_WIDTH-1:0] frame_fifo2tx_w;
+    wire [NUM_SW_INST-1:0] rd_en_tx2fifo_w;
+    wire [NUM_SW_INST-1:0] empty_fifo2tx_w;
+    wire [NUM_SW_INST-1:0] full_fifo2tx_w;
 
-    //{addr[4:0], wr_rd_op, wr_data[W_WIDTH-1:0], op_id[7:0]}
-    wire [OP_WIDTH-1:0]         op_demux2fifo   [NUM_SW_INST];
-    wire                        wr_demux2fifo   [NUM_SW_INST];
-    wire [OP_WIDTH-1:0]         op_fifo2tx      [NUM_SW_INST];
-    wire                        rd_fifo2tx      [NUM_SW_INST];
-    wire                        empty_fifo2tx   [NUM_SW_INST];
-    wire                        full_fifo2tx    [NUM_SW_INST];
+    wire [NUM_SW_INST-1:0] sw_busy_rx2tx_w;
+    wire [7:0]             op_id_tx2rx_w;
 
-    wire                        sw_busy_rx2tx   [NUM_SW_INST];
-    wire [7:0]                  op_id_tx2rx     [NUM_SW_INST];
+    //to switches
+    wire [NUM_SW_INST-1:0] sel_en_out_w;
+    wire [1:0] addr_out_w;
+    wire [W_WIDTH-1:0] wr_data_out_w;
+    wire wr_rd_s_out_w;
 
-    in_demux DUT_DEMUX # (
+    //from switches
+    wire [7:0]             op_id_rx2out_w;
+    wire [W_WIDTH-1:0]     rd_data_rx2out_w;
+    wire [NUM_SW_INST-1:0] ready_out_w;
+    wire [7:0]             ready_op_id_w;
+
+    in_bus DUT_BUS # (
         .NUM_SW_INST(NUM_SW_INST),
         .W_WIDTH(W_WIDTH),
-        .OP_WIDTH(OP_WIDTH)
+        .FRAME_WIDTH(FRAME_WIDTH)
     )(
         .clk(clk),
         .rst_n(rst_n),
-        .sw_sel(addr_in[7:5]),
-        .addr(addr_in[4:0]),
-        .wr_data(wr_data_in),
+        .en_in(enable_in),
         .wr_rd_op(wr_rd_op),
         .valid(valid_in),
         .op_id(op_id_in),
-        .op_out(op_demux2fifo),
-        .wr_fifo(wr_demux2fifo)
+        .addr_in(addr_in),
+        .wr_data_in(wr_data_in),
+        .frame_out(frame_bus2fifo_w),
+        .fifo_wr_en(wr_en_bus2fifo_w)
     );
+
+    genvar i;
+    generate
+        for(i = 0; i < NUM_SW_INST; i = i + 1) begin
+            fifo DUT_AD_FIFO # (
+                .FIFO_SIZE(2),
+                .W_WIDTH(FRAME_WIDTH)
+            )(
+                .clk(clk),
+                .rst_n(rst),
+                .wr_en(wr_en_bus2fifo_w[i]),
+                .rd_en(rd_en_tx2fifo[i]),
+                .data_in(frame_bus2fifo_w),
+                .data_out(frame_fifo2tx_w),
+                .empty(empty_fifo2tx_w[i]),
+                .full(full_fifo2tx_w)
+            );
+        end 
+    endgenerate
+
 
     tx_scheduler_top DUT_TX_SCHEDULER # (
         .NUM_SW_INST(NUM_SW_INST),
@@ -70,16 +96,17 @@ module addr_decoder #(
     )(
         .clk(clk),
         .rst_n(rst_n),
-        .op_in(op_fifo2tx),
-        .sw_busy(sw_busy_rx2tx),
-        .op_id(op_id_tx2rx),
-        .rd_fifo(rd_fifo2tx),
-        .sel_en(sel_en_in),
-        .addr(sw_addr_in),
-        .wr_data(sw_w_data_in),
-        .wr_rd_s(wr_rd_s_in),
-        .empty_in(empty_fifo2tx),
-        .full_in(full_fifo2tx)
+        .empty_in(empty_fifo2tx_w),
+        .full_in(full_fifo2tx_w),
+        .frame_in(frame_fifo2tx_w),
+        .sw_busy(sw_busy_rx2tx_w),//this maybe connected to the ack incoming from sw
+
+        .op_id_out(op_id_tx2rx_w),
+        .fifo_rd_en(rd_en_tx2fifo_w),
+        .sel_en(sel_en_out_w),
+        .addr(addr_out_w),
+        .wr_data(wr_data_out_w),
+        .wr_rd_s(wr_rd_s_out_w)
     );
 
     rx_fsm DUT_RX_FSM # (
@@ -87,31 +114,24 @@ module addr_decoder #(
     )(
         .clk(clk),
         .rst_n(rst_n),
-        .sw_busy(sw_busy_rx2tx),
-        .op_id_in(op_id_tx2rx),
-        .rd_data_in(sw_rd_data_out),
-        .ack(ack_out),
-        .rd_data_out(rd_data_out),
-        .ready(ready_out),
-        .op_id_out(ready_id)
+        .sel_en(sel_en_out_w),//for determing which switch is busy
+        .wr_rd_s(wr_rd_s_out_w),//read transactions will be blocking
+        .op_id_in(op_id_tx2rx_w),//this needs to be saved when a select is present
+        .rd_data_in(rd_data_in),//coming from the switches
+        .ack(ack_in)
+
+        .sw_busy(sw_busy_rx2tx_w),//signal that a switch is busy
+        .rd_data_out(rd_data_rx2out_w),
+        .ready_out(ready_out_w),
+        .op_id_out(ready_op_id_W)
     );
 
-    genvar i;
-    generate
-        for(i = 0; i < NUM_SW_INST - 1; i++) begin
-            fifo DUT_AD_FIFO # (
-                .FIFO_SIZE(2),
-                .W_WIDTH(5+1+W_WIDTH+8)
-            )(
-                .clk(clk),
-                .rst_n(rst),
-                .wr_en(wr_demux2fifo[i]),
-                .rd_en(rd_fifo2tx[i]),
-                .data_in(op_demux2fifo[i]),
-                .data_out(op_fifo2tx[i]),
-                .empty(empty_fifo2tx[i]),
-                .full(full_fifo2tx)
-            );
-        end 
-    endgenerate
+    assign sel_en_out = sel_en_out_w;
+    assign addr_out = addr_out_w;
+    assign wr_data_out = wr_data_out_w;
+    assign wr_rd_s_out = wr_rd_s_out_w;
+
+    assign rd_data_out = rd_data_rx2out_w;
+    assign ready_out = ready_out_w;
+    assign ready_op_id = ready_op_id_W;
 endmodule

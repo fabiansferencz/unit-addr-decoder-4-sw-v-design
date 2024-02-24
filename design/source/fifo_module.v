@@ -28,7 +28,7 @@ module fifo # (
             rd_pos <= 'b0;
             wr_pos <= 'b0;
 
-        	ram <= '{default:0};
+        	//ram <= '{default:0};
         end 
         else begin
             if(wr_en && !full_s) begin
