@@ -22,11 +22,15 @@ module in_bus #(
     fifo_wr_en_nxt = fifo_wr_en_ff;
 
     if(en_in && valid) begin
-      //{bits[21:17], bits[16], bits[15:8], bits[7:0]}
+      //{addr[21:17], wr_rd_s[16], wr_data[15:8], op_id[7:0]}
       frame_out_nxt = {11'd0, addr_in[4:0], wr_rd_op, wr_data_in, op_id};
       fifo_wr_en_nxt = 0;//reset the wr_en for fifos
-      fifo_wr_en_nxt[addr[7:5]] = 1;//set the wr_en for coresponding fifo
-    end 
+      fifo_wr_en_nxt[addr_in[7:5]] = 1;//set the wr_en for coresponding fifo
+    end
+    else begin
+      frame_out_nxt = 0;
+      fifo_wr_en_nxt = 0;
+    end  
   end 
 
   always @(posedge clk or negedge rst_n) begin

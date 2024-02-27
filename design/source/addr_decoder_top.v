@@ -14,24 +14,21 @@ module addr_decoder #(
     input [7:0] addr_in, op_id_in,
     input [W_WIDTH-1:0] wr_data_in,
 
-    input  [W_WIDTH-1:0] rd_data_in,
+    input  [W_WIDTH-1:0] rd_data_in,//from switches
     input  [NUM_SW_INST-1:0] ack_in,//from switches
 
-    output [NUM_SW_INST-1:0] ready_out,
+    output ready_out,
     output [W_WIDTH-1:0] rd_data_out,
-    output [7:0] ready_op_id,
+    output [7:0] done_op_id,
 
-    output [1:0] addr_out;//cause there are only 4 ports per sw, meaning 4 registers per sw
-    output [W_WIDTH-1:0] wr_data_out;
-  
-    output [NUM_SW_INST-1:0] sel_en_out;
-    output wr_rd_s_out;
-    
+    output [NUM_SW_INST-1:0] sel_en_out,//going to switches
+    output wr_rd_s_out,//going to switches
+    output [W_WIDTH-1:0] addr_out,//going to switches
+    output [W_WIDTH-1:0] wr_data_out//going to switches
 );
 
     wire [FRAME_WIDTH-1:0] frame_bus2fifo_w;
     wire [NUM_SW_INST-1:0] wr_en_bus2fifo_w;
-
     wire [FRAME_WIDTH-1:0] frame_fifo2tx_w;
     wire [NUM_SW_INST-1:0] rd_en_tx2fifo_w;
     wire [NUM_SW_INST-1:0] empty_fifo2tx_w;
@@ -42,21 +39,20 @@ module addr_decoder #(
 
     //to switches
     wire [NUM_SW_INST-1:0] sel_en_out_w;
-    wire [1:0] addr_out_w;
+    wire [W_WIDTH-1:0] addr_out_w;
     wire [W_WIDTH-1:0] wr_data_out_w;
     wire wr_rd_s_out_w;
 
     //from switches
     wire [7:0]             op_id_rx2out_w;
     wire [W_WIDTH-1:0]     rd_data_rx2out_w;
-    wire [NUM_SW_INST-1:0] ready_out_w;
-    wire [7:0]             ready_op_id_w;
+    wire [7:0]             done_op_id_w;
 
-    in_bus DUT_BUS # (
+    in_bus # (
         .NUM_SW_INST(NUM_SW_INST),
         .W_WIDTH(W_WIDTH),
         .FRAME_WIDTH(FRAME_WIDTH)
-    )(
+    ) DUT_BUS (
         .clk(clk),
         .rst_n(rst_n),
         .en_in(enable_in),
@@ -72,14 +68,14 @@ module addr_decoder #(
     genvar i;
     generate
         for(i = 0; i < NUM_SW_INST; i = i + 1) begin
-            fifo DUT_AD_FIFO # (
+            fifo  # (
                 .FIFO_SIZE(2),
                 .W_WIDTH(FRAME_WIDTH)
-            )(
+            ) DUT_AD_FIFO (
                 .clk(clk),
-                .rst_n(rst),
+                .rst_n(rst_n),
                 .wr_en(wr_en_bus2fifo_w[i]),
-                .rd_en(rd_en_tx2fifo[i]),
+                .rd_en(rd_en_tx2fifo_w[i]),
                 .data_in(frame_bus2fifo_w),
                 .data_out(frame_fifo2tx_w),
                 .empty(empty_fifo2tx_w[i]),
@@ -89,19 +85,19 @@ module addr_decoder #(
     endgenerate
 
 
-    tx_scheduler_top DUT_TX_SCHEDULER # (
+    tx_scheduler_top # (
         .NUM_SW_INST(NUM_SW_INST),
         .W_WIDTH(W_WIDTH),
-        .OP_WIDTH(OP_WIDTH)
-    )(
+        .FRAME_WIDTH(FRAME_WIDTH)
+    ) DUT_TX_SCHEDULER (
         .clk(clk),
         .rst_n(rst_n),
         .empty_in(empty_fifo2tx_w),
         .full_in(full_fifo2tx_w),
-        .frame_in(frame_fifo2tx_w),
         .sw_busy(sw_busy_rx2tx_w),//this maybe connected to the ack incoming from sw
+        .frame_in(frame_fifo2tx_w),
 
-        .op_id_out(op_id_tx2rx_w),
+        .op_id(op_id_tx2rx_w),
         .fifo_rd_en(rd_en_tx2fifo_w),
         .sel_en(sel_en_out_w),
         .addr(addr_out_w),
@@ -109,21 +105,20 @@ module addr_decoder #(
         .wr_rd_s(wr_rd_s_out_w)
     );
 
-    rx_fsm DUT_RX_FSM # (
+    rx_fsm # (
+        .NUM_SW_INST(NUM_SW_INST),
         .W_WIDTH(W_WIDTH)
-    )(
+    ) DUT_RX_FSM (
         .clk(clk),
         .rst_n(rst_n),
         .sel_en(sel_en_out_w),//for determing which switch is busy
-        .wr_rd_s(wr_rd_s_out_w),//read transactions will be blocking
-        .op_id_in(op_id_tx2rx_w),//this needs to be saved when a select is present
-        .rd_data_in(rd_data_in),//coming from the switches
-        .ack(ack_in)
+        .op_id(op_id_tx2rx_w),//this needs to be saved when a select is present
+        .rd_data(rd_data_in),//coming from the switches
+        .ack(ack_in),
 
         .sw_busy(sw_busy_rx2tx_w),//signal that a switch is busy
         .rd_data_out(rd_data_rx2out_w),
-        .ready_out(ready_out_w),
-        .op_id_out(ready_op_id_W)
+        .op_id_out(done_op_id_W)
     );
 
     assign sel_en_out = sel_en_out_w;
@@ -132,6 +127,6 @@ module addr_decoder #(
     assign wr_rd_s_out = wr_rd_s_out_w;
 
     assign rd_data_out = rd_data_rx2out_w;
-    assign ready_out = ready_out_w;
-    assign ready_op_id = ready_op_id_W;
+    assign ready_out = ~(|full_fifo2tx_w);//signals that at least one fifo is full, if not, the AD is ready to receaive transactions
+    assign done_op_id = done_op_id_W;
 endmodule
