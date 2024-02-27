@@ -33,7 +33,7 @@ module frame_sif #(
         addr_nxt = {3'b000, frame_in[21:17]};
         wr_rd_s_nxt = frame_in[16];
         wr_data_nxt = frame_in[15:8];
-        op_id_nxt = frame_in[7:0];
+        op_id_nxt = frame_in[7:0];//TODO see if this needs to arive earlier to the rx module
     end
 
     always @(posedge clk or negedge rst_n) begin
