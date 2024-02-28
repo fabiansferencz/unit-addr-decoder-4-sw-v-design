@@ -1,8 +1,9 @@
 `include "bus_module.v"
 `include "fifo_module.v"
+`include "rx_module.v"
 `include "tx_scheduler_top.v"
 
-module addr_decoder #(
+module addr_decoder_top #(
     parameter READ_DELAY  = 1,
     parameter NUM_SW_INST = 5,
     parameter W_WIDTH = 8,
@@ -48,7 +49,7 @@ module addr_decoder #(
     wire [W_WIDTH-1:0]     rd_data_rx2out_w;
     wire [7:0]             done_op_id_w;
 
-    in_bus # (
+    bus_module # (
         .NUM_SW_INST(NUM_SW_INST),
         .W_WIDTH(W_WIDTH),
         .FRAME_WIDTH(FRAME_WIDTH)
@@ -105,7 +106,7 @@ module addr_decoder #(
         .wr_rd_s(wr_rd_s_out_w)
     );
 
-    rx_fsm # (
+    rx_module # (
         .NUM_SW_INST(NUM_SW_INST),
         .W_WIDTH(W_WIDTH)
     ) DUT_RX_FSM (
@@ -129,4 +130,4 @@ module addr_decoder #(
     assign rd_data_out = rd_data_rx2out_w;
     assign ready_out = ~(|full_fifo2tx_w);//signals that at least one fifo is full, if not, the AD is ready to receaive transactions
     assign done_op_id = done_op_id_W;
-endmodule
+endmodule : addr_decoder_top

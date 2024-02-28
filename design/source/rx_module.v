@@ -1,5 +1,5 @@
 
-module rx_fsm #(
+module rx_module #(
     parameter NUM_SW_INST = 5,
     parameter W_WIDTH = 8
 ) (
@@ -37,9 +37,8 @@ module rx_fsm #(
         end 
 
         for(i = 0; i < NUM_SW_INST; i = i + 1) begin
-            if(ack[i] = 1) begin
+            if(ack[i] == 1) begin
                 op_id_out_nxt = buffer_op_id[i];
-                //buffer_op_id[i] = 0;
                 sw_busy_nxt[i] = 0;
                 rd_data_out_nxt = rd_data;
             end 
@@ -62,4 +61,4 @@ module rx_fsm #(
     assign sw_busy = sw_busy_ff;
     assign rd_data_out = rd_data_out_ff;
     assign op_id_out = op_id_out_ff;
-endmodule
+endmodule : rx_module

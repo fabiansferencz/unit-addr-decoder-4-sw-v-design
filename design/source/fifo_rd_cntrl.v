@@ -76,4 +76,4 @@ module fifo_rd_cntrl #(
     end
 
     assign rd_en = rd_en_ff;
-endmodule
+endmodule : fifo_rd_cntrl

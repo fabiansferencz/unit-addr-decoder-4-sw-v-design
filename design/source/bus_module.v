@@ -1,4 +1,4 @@
-module in_bus #(
+module bus_module #(
   parameter NUM_SW_INST = 5,
   parameter W_WIDTH = 8,
   parameter FRAME_WIDTH = 32
@@ -46,4 +46,4 @@ module in_bus #(
 
   assign frame_out = frame_out_ff;
   assign fifo_wr_en = fifo_wr_en_ff; 
-endmodule : in_bus
+endmodule : bus_module
