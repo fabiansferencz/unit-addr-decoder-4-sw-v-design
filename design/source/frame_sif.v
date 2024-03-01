@@ -48,8 +48,8 @@ module frame_sif #(
     end
 
     assign sel_en = sel_en_ff;
-    assign addr = addr_ff;
+    assign addr = {3'b000, frame_in[21:17]};
     assign wr_data = wr_data_ff;
-    assign wr_rd_s = wr_rd_s_ff;
+    assign wr_rd_s = frame_in[16];
     assign op_id = frame_in[7:0];//op_id must arrive at the same time with sel_en to the rx
 endmodule : frame_sif
