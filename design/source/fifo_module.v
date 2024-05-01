@@ -3,7 +3,7 @@ module fifo # (
     parameter W_WIDTH = 32
 )(
     input clk, rst_n,
-    input wr_en, rd_en,
+    input fifo_en, wr_en, rd_en,
     input [W_WIDTH-1:0] data_in,
     output [W_WIDTH-1:0] data_out,
     output full, empty
@@ -25,7 +25,7 @@ module fifo # (
             data_out_s <= 'b0;
         end 
         else begin
-            if(wr_en && !full_s) begin
+            if(fifo_en && wr_en && !full_s) begin
                 ram[wr_pos] <= data_in;
                 empty_s <= 1'b0;
 

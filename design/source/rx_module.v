@@ -41,7 +41,12 @@ module rx_module #(
                 op_id_out_nxt = buffer_op_id[i];
                 sw_busy_nxt[i] = 0;
                 rd_data_out_nxt = rd_data;
+            i = NUM_SW_INST;
             end 
+            else begin
+                op_id_out_nxt = '0;
+                rd_data_out_nxt = '0;
+            end
         end 
     end
 

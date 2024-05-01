@@ -5,6 +5,7 @@
 
 module addr_decoder_top #(
     parameter READ_DELAY  = 1,
+    parameter FIFO_SIZE = 2,
     parameter NUM_SW_INST = 5,
     parameter W_WIDTH = 8,
     parameter FRAME_WIDTH = 32
@@ -34,6 +35,7 @@ module addr_decoder_top #(
     wire [NUM_SW_INST-1:0] rd_en_tx2fifo_w;
     wire [NUM_SW_INST-1:0] empty_fifo2tx_w;
     wire [NUM_SW_INST-1:0] full_fifo2tx_w;
+    wire fifo_en_w;
 
     wire [NUM_SW_INST-1:0] sw_busy_rx2tx_w;
     wire [7:0]             op_id_tx2rx_w;
@@ -45,7 +47,6 @@ module addr_decoder_top #(
     wire wr_rd_s_out_w;
 
     //from switches
-    wire [7:0]             op_id_rx2out_w;
     wire [W_WIDTH-1:0]     rd_data_rx2out_w;
     wire [7:0]             done_op_id_w;
 
@@ -70,17 +71,18 @@ module addr_decoder_top #(
     generate
         for(i = 0; i < NUM_SW_INST; i = i + 1) begin
             fifo  # (
-                .FIFO_SIZE(2),
+                .FIFO_SIZE(FIFO_SIZE),
                 .W_WIDTH(FRAME_WIDTH)
             ) DUT_AD_FIFO (
                 .clk(clk),
                 .rst_n(rst_n),
+                .fifo_en(fifo_en_w),
                 .wr_en(wr_en_bus2fifo_w[i]),
                 .rd_en(rd_en_tx2fifo_w[i]),
                 .data_in(frame_bus2fifo_w),
                 .data_out(frame_fifo2tx_w),
                 .empty(empty_fifo2tx_w[i]),
-                .full(full_fifo2tx_w)
+                .full(full_fifo2tx_w[i])
             );
         end 
     endgenerate
@@ -119,15 +121,16 @@ module addr_decoder_top #(
 
         .sw_busy(sw_busy_rx2tx_w),//signal that a switch is busy
         .rd_data_out(rd_data_rx2out_w),
-        .op_id_out(done_op_id_W)
+        .op_id_out(done_op_id_w)
     );
 
+    assign fifo_en_w = ~(|full_fifo2tx_w);
     assign sel_en_out = sel_en_out_w;
     assign addr_out = addr_out_w;
     assign wr_data_out = wr_data_out_w;
     assign wr_rd_s_out = wr_rd_s_out_w;
 
     assign rd_data_out = rd_data_rx2out_w;
-    assign ready_out = ~(|full_fifo2tx_w);//signals that at least one fifo is full, if not, the AD is ready to receaive transactions
-    assign done_op_id = done_op_id_W;
+    assign ready_out = fifo_en_w;//signals that at least one fifo is full, if not, the AD is ready to receaive transactions
+    assign done_op_id = done_op_id_w;
 endmodule : addr_decoder_top
