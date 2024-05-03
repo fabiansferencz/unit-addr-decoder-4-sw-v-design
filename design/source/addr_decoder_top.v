@@ -98,7 +98,11 @@ module addr_decoder_top #(
         .empty_in(empty_fifo2tx_w),
         .full_in(full_fifo2tx_w),
         .sw_busy(sw_busy_rx2tx_w),//this maybe connected to the ack incoming from sw
-        .frame_in(frame_fifo2tx_w),
+        .frame_in_0(frame_fifo2tx_w[0]),
+        .frame_in_1(frame_fifo2tx_w[1]),
+        .frame_in_2(frame_fifo2tx_w[2]),
+        .frame_in_3(frame_fifo2tx_w[3]),
+        .frame_in_4(frame_fifo2tx_w[4]),
 
         .op_id(op_id_tx2rx_w),
         .fifo_rd_en(rd_en_tx2fifo_w),

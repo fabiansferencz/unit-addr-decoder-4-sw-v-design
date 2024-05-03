@@ -10,7 +10,11 @@ module tx_scheduler_top #(
     input clk, rst_n,
     input [NUM_SW_INST-1:0] empty_in, full_in,
     input [NUM_SW_INST-1:0] sw_busy,
-    input [FRAME_WIDTH-1:0] frame_in [NUM_SW_INST-1:0],
+    input [FRAME_WIDTH-1:0] frame_in_0,
+    input [FRAME_WIDTH-1:0] frame_in_1,
+    input [FRAME_WIDTH-1:0] frame_in_2,
+    input [FRAME_WIDTH-1:0] frame_in_3,
+    input [FRAME_WIDTH-1:0] frame_in_4,
 
     output [NUM_SW_INST-1:0] fifo_rd_en,
     output [7:0] op_id,
@@ -49,7 +53,11 @@ module tx_scheduler_top #(
         .clk(clk),
         .rst_n(rst_n),
         .rd_sel(rd_en_tx2fifo_w),
-        .frame_in(frame_in),
+        .frame_in_0(frame_in_0),
+        .frame_in_1(frame_in_1),
+        .frame_in_2(frame_in_2),
+        .frame_in_3(frame_in_3),
+        .frame_in_4(frame_in_4),
         .frame_out(frame_mux2sif_w)
     );
 

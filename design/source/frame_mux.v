@@ -4,7 +4,11 @@ module frame_mux #(
 )(
     input clk, rst_n,
     input [NUM_SW_INST-1] rd_sel,
-    input [FRAME_WIDTH-1:0] frame_in [NUM_SW_INST-1:0],
+    input [FRAME_WIDTH-1:0] frame_in_0,
+    input [FRAME_WIDTH-1:0] frame_in_1,
+    input [FRAME_WIDTH-1:0] frame_in_2,
+    input [FRAME_WIDTH-1:0] frame_in_3,
+    input [FRAME_WIDTH-1:0] frame_in_4,
     output [FRAME_WIDTH-1:0] frame_out 
 );
 
@@ -20,11 +24,11 @@ module frame_mux #(
         end
         else begin
             case (rd_sel)
-            FIFO_SW_0 : frame_out <= frame_in[0];
-            FIFO_SW_1 : frame_out <= frame_in[1];
-            FIFO_SW_2 : frame_out <= frame_in[2];
-            FIFO_SW_3 : frame_out <= frame_in[3];
-            FIFO_SW_4 : frame_out <= frame_in[4];
+            FIFO_SW_0 : frame_out <= frame_in_0;
+            FIFO_SW_1 : frame_out <= frame_in_1;
+            FIFO_SW_2 : frame_out <= frame_in_2;
+            FIFO_SW_3 : frame_out <= frame_in_3;
+            FIFO_SW_4 : frame_out <= frame_in_4;
             default: frame_out <= 0; // Default case
         endcase
         end
