@@ -31,7 +31,7 @@ module addr_decoder_top #(
 
     wire [FRAME_WIDTH-1:0] frame_bus2fifo_w;
     wire [NUM_SW_INST-1:0] wr_en_bus2fifo_w;
-    wire [FRAME_WIDTH-1:0] frame_fifo2tx_w;
+    wire [FRAME_WIDTH-1:0] frame_fifo2tx_w [NUM_SW_INST-1:0];
     wire [NUM_SW_INST-1:0] rd_en_tx2fifo_w;
     wire [NUM_SW_INST-1:0] empty_fifo2tx_w;
     wire [NUM_SW_INST-1:0] full_fifo2tx_w;
@@ -80,7 +80,7 @@ module addr_decoder_top #(
                 .wr_en(wr_en_bus2fifo_w[i]),
                 .rd_en(rd_en_tx2fifo_w[i]),
                 .data_in(frame_bus2fifo_w),
-                .data_out(frame_fifo2tx_w),
+                .data_out(frame_fifo2tx_w[i]),
                 .empty(empty_fifo2tx_w[i]),
                 .full(full_fifo2tx_w[i])
             );

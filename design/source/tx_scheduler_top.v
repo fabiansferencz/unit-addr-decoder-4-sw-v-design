@@ -1,3 +1,4 @@
+`include "frame_mux.v"
 `include "frame_sif.v"
 `include "fifo_rd_cntrl.v"
 
@@ -9,7 +10,7 @@ module tx_scheduler_top #(
     input clk, rst_n,
     input [NUM_SW_INST-1:0] empty_in, full_in,
     input [NUM_SW_INST-1:0] sw_busy,
-    input [FRAME_WIDTH-1:0] frame_in,
+    input [FRAME_WIDTH-1:0] frame_in [NUM_SW_INST-1:0],
 
     output [NUM_SW_INST-1:0] fifo_rd_en,
     output [7:0] op_id,
@@ -20,6 +21,7 @@ module tx_scheduler_top #(
 
 );  
     wire [NUM_SW_INST-1:0] rd_en_tx2fifo_w;
+    wire [FRAME_WIDTH-1:0] frame_mux2sif_w;
     wire [7:0] op_id_tx2rx_w;
 
     //signals going to the mem interface(switches)
@@ -40,6 +42,17 @@ module tx_scheduler_top #(
         .rd_en(rd_en_tx2fifo_w)
     );
 
+    frame_mux # (
+        .NUM_SW_INST(NUM_SW_INST),
+        .FRAME_WIDTH(FRAME_WIDTH)
+    ) DUT_FRAME_MUX (
+        .clk(clk),
+        .rst_n(rst_n),
+        .rd_sel(rd_en_tx2fifo_w),
+        .frame_in(frame_in),
+        .frame_out(frame_mux2sif_w)
+    );
+
     frame_sif # (
         .NUM_SW_INST(NUM_SW_INST),
         .W_WIDTH(W_WIDTH),
@@ -48,7 +61,7 @@ module tx_scheduler_top #(
         .clk(clk),
         .rst_n(rst_n),
         .load_in(rd_en_tx2fifo_w),
-        .frame_in(frame_in),
+        .frame_in(frame_mux2sif_w),
 
         .sel_en(sel_en_tx2sw_w),
         .addr(addr_tx2sw_w),
