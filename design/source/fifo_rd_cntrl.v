@@ -4,12 +4,14 @@ module fifo_rd_cntrl #(
 ) (
     input clk, rst_n,
     input [NUM_SW_INST-1:0] empty, full,
+    input [NUM_SW_INST-1:0] last,
     input [NUM_SW_INST-1:0] sw_busy,
 
     output [NUM_SW_INST-1:0] rd_en
 );
     localparam IDLE = 2'd0;
-    localparam CHECK_BY_PRIORITY = 2'd1;
+    localparam WAIT = 2'd1;
+    localparam CHECK_BY_PRIORITY = 2'd2;
 
     integer i;
     integer idx_cnt_ff, idx_cnt_nxt;
@@ -36,11 +38,19 @@ module fifo_rd_cntrl #(
                     state_m_nxt = CHECK_BY_PRIORITY;
                     idx_cnt_nxt = NUM_SW_INST-1;
                 end
+            WAIT:
+                begin
+                    rd_en_nxt = 0;
+                    state_m_nxt = CHECK_BY_PRIORITY;
+                end
             CHECK_BY_PRIORITY:
                 begin
                     rd_en_nxt = 0;
                     if((empty[circ_buffer[idx_cnt_ff]] == 0 && sw_busy[circ_buffer[idx_cnt_ff]] == 0)) begin
                         rd_en_nxt[circ_buffer[idx_cnt_ff]] = 1;
+                        if(last[circ_buffer[idx_cnt_ff]] == 1'b1) begin
+                            state_m_nxt = WAIT;
+                        end
                     end
                     else begin
                         idx_cnt_nxt = idx_cnt_nxt - 1;

@@ -1,6 +1,6 @@
 `include "bus_module.v"
-`include "fifo_module.v"
-`include "rx_module.v"
+`include "fifo_top.v"
+`include "rx_top.v"
 `include "tx_scheduler_top.v"
 
 module addr_decoder_top #(
@@ -31,11 +31,13 @@ module addr_decoder_top #(
 
     wire [FRAME_WIDTH-1:0] frame_bus2fifo_w;
     wire [NUM_SW_INST-1:0] wr_en_bus2fifo_w;
-    wire [FRAME_WIDTH-1:0] frame_fifo2tx_w [NUM_SW_INST-1:0];
+    wire [FRAME_WIDTH*NUM_SW_INST-1:0] frame_fifo2tx_w;
     wire [NUM_SW_INST-1:0] rd_en_tx2fifo_w;
     wire [NUM_SW_INST-1:0] empty_fifo2tx_w;
     wire [NUM_SW_INST-1:0] full_fifo2tx_w;
-    wire fifo_en_w;
+    wire [NUM_SW_INST-1:0] last_fifo2tx_w;
+    wire [FRAME_WIDTH-1:0] mux2tx_w;
+    wire [NUM_SW_INST-1:0] rd_en_tx2fifo_delayed_w;
 
     wire [NUM_SW_INST-1:0] sw_busy_rx2tx_w;
     wire [7:0]             op_id_tx2rx_w;
@@ -57,6 +59,7 @@ module addr_decoder_top #(
     ) DUT_BUS (
         .clk(clk),
         .rst_n(rst_n),
+        .full((|full_fifo2tx_w)),
         .en_in(enable_in),
         .wr_rd_op(wr_rd_op),
         .valid(valid_in),
@@ -70,23 +73,45 @@ module addr_decoder_top #(
     genvar i;
     generate
         for(i = 0; i < NUM_SW_INST; i = i + 1) begin
-            fifo  # (
+            fifo_top  # (
                 .FIFO_SIZE(FIFO_SIZE),
                 .W_WIDTH(FRAME_WIDTH)
-            ) DUT_AD_FIFO (
+            ) DUT_AD_FIFO_TOP (
                 .clk(clk),
                 .rst_n(rst_n),
-                .fifo_en(fifo_en_w),
+                .fifo_en(~(|full_fifo2tx_w)),
                 .wr_en(wr_en_bus2fifo_w[i]),
                 .rd_en(rd_en_tx2fifo_w[i]),
                 .data_in(frame_bus2fifo_w),
-                .data_out(frame_fifo2tx_w[i]),
+                .data_out(frame_fifo2tx_w[(i+1)*FRAME_WIDTH-1:i*FRAME_WIDTH]),
                 .empty(empty_fifo2tx_w[i]),
-                .full(full_fifo2tx_w[i])
+                .full(full_fifo2tx_w[i]),
+                .last(last_fifo2tx_w[i])
             );
         end 
     endgenerate
 
+
+
+    delay # (
+        .WIDTH(NUM_SW_INST)
+    ) MUX_DELAY (
+        .clk(clk),
+        .rst_n(rst_n),
+        .in(rd_en_tx2fifo_w),
+        .out(rd_en_tx2fifo_delayed_w)
+    ); 
+
+    mux_top # (
+        .NUM_SW_INST(NUM_SW_INST),
+        .W_WIDTH(FRAME_WIDTH)
+    ) DUT_FRAME_MUX (
+        .clk(clk),
+        .rst_n(rst_n),
+        .sel(rd_en_tx2fifo_delayed_w),
+        .data_in(frame_fifo2tx_w),
+        .data_out(mux2tx_w)
+    );
 
     tx_scheduler_top # (
         .NUM_SW_INST(NUM_SW_INST),
@@ -98,11 +123,8 @@ module addr_decoder_top #(
         .empty_in(empty_fifo2tx_w),
         .full_in(full_fifo2tx_w),
         .sw_busy(sw_busy_rx2tx_w),//this maybe connected to the ack incoming from sw
-        .frame_in_0(frame_fifo2tx_w[0]),
-        .frame_in_1(frame_fifo2tx_w[1]),
-        .frame_in_2(frame_fifo2tx_w[2]),
-        .frame_in_3(frame_fifo2tx_w[3]),
-        .frame_in_4(frame_fifo2tx_w[4]),
+        .last(last_fifo2tx_w),
+        .frame_in(mux2tx_w),
 
         .op_id(op_id_tx2rx_w),
         .fifo_rd_en(rd_en_tx2fifo_w),
@@ -112,9 +134,10 @@ module addr_decoder_top #(
         .wr_rd_s(wr_rd_s_out_w)
     );
 
-    rx_module # (
+    rx_top # (
         .NUM_SW_INST(NUM_SW_INST),
-        .W_WIDTH(W_WIDTH)
+        .W_WIDTH(W_WIDTH),
+        .FIFO_SIZE(FIFO_SIZE)
     ) DUT_RX_FSM (
         .clk(clk),
         .rst_n(rst_n),
@@ -128,13 +151,12 @@ module addr_decoder_top #(
         .op_id_out(done_op_id_w)
     );
 
-    assign fifo_en_w = ~(|full_fifo2tx_w);
     assign sel_en_out = sel_en_out_w;
     assign addr_out = addr_out_w;
     assign wr_data_out = wr_data_out_w;
     assign wr_rd_s_out = wr_rd_s_out_w;
 
     assign rd_data_out = rd_data_rx2out_w;
-    assign ready_out = fifo_en_w;//signals that at least one fifo is full, if not, the AD is ready to receaive transactions
+    assign ready_out = ~(|full_fifo2tx_w);//signals that at least one fifo is full, if not, the AD is ready to receaive transactions
     assign done_op_id = done_op_id_w;
 endmodule : addr_decoder_top
