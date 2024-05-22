@@ -24,7 +24,7 @@ module fifo_cnt # (
     end	
 
     assign index = index_s;
-    assign last = index_s == 1'b1 ? 1'b1 : 1'b0;
+    assign last = (index_s == 'h1 || (rd_en && index_s == 'h2)) ? 1'b1 : 1'b0;
    
 endmodule : fifo_cnt
 
