@@ -16,7 +16,7 @@ module mux_top # (
     reorder  # (
         .NUM_SW_INST(NUM_SW_INST),
         .W_WIDTH(W_WIDTH)
-    ) REORDER_FIFO2MUX (
+    ) REORDER (
         .data_in(data_in),
         .data_out(reoder2mux_w)
     );

@@ -1,7 +1,7 @@
 `include "fifo_module.v"
 `include "fifo_cnt.v"
 
-module fifo_top # (
+module queue_top # (
     parameter FIFO_SIZE = 64,
     parameter W_WIDTH = 32
 )(
@@ -16,7 +16,7 @@ module fifo_top # (
     fifo  # (
         .FIFO_SIZE(FIFO_SIZE),
         .W_WIDTH(W_WIDTH)
-    ) DUT_AD_FIFO (
+    ) DUT_FIFO (
         .clk(clk),
         .rst_n(rst_n),
         .fifo_en(fifo_en),
@@ -30,7 +30,7 @@ module fifo_top # (
 
     fifo_cnt # (
         .FIFO_SIZE(FIFO_SIZE)
-    ) DUT_AD_FIFO_CNT (
+    ) DUT_CNT (
         .clk(clk),
         .rst_n(rst_n),
         .fifo_en(fifo_en),
@@ -40,5 +40,5 @@ module fifo_top # (
         .last(last)
     );  
    
-endmodule : fifo_top
+endmodule : queue_top
 

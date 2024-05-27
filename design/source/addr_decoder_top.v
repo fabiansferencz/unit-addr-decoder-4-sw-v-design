@@ -1,7 +1,9 @@
 `include "bus_module.v"
-`include "fifo_top.v"
-`include "rx_top.v"
-`include "tx_scheduler_top.v"
+`include "./QUEUE_TOP/queue_top.v"
+`include "./RX_TOP/rx_top.v"
+`include "./MUX_TOP/mux_top.v"
+`include "delay_module.v"
+`include "./TX_TOP/tx_scheduler_top.v"
 
 module addr_decoder_top #(
     parameter READ_DELAY  = 1,
@@ -36,8 +38,6 @@ module addr_decoder_top #(
     wire [NUM_SW_INST-1:0] empty_fifo2tx_w;
     wire [NUM_SW_INST-1:0] full_fifo2tx_w;
     wire [NUM_SW_INST-1:0] last_fifo2tx_w;
-    wire [FRAME_WIDTH-1:0] mux2tx_w;
-    wire [NUM_SW_INST-1:0] rd_en_tx2fifo_delayed_w;
 
     wire [NUM_SW_INST-1:0] sw_busy_rx2tx_w;
     wire [7:0]             op_id_tx2rx_w;
@@ -73,10 +73,10 @@ module addr_decoder_top #(
     genvar i;
     generate
         for(i = 0; i < NUM_SW_INST; i = i + 1) begin
-            fifo_top  # (
+            queue_top  # (
                 .FIFO_SIZE(FIFO_SIZE),
                 .W_WIDTH(FRAME_WIDTH)
-            ) DUT_AD_FIFO_TOP (
+            ) DUT_AD_QUEUE_TOP (
                 .clk(clk),
                 .rst_n(rst_n),
                 .fifo_en(~(|full_fifo2tx_w)),
@@ -91,28 +91,6 @@ module addr_decoder_top #(
         end 
     endgenerate
 
-
-
-    delay # (
-        .WIDTH(NUM_SW_INST)
-    ) MUX_DELAY (
-        .clk(clk),
-        .rst_n(rst_n),
-        .in(rd_en_tx2fifo_w),
-        .out(rd_en_tx2fifo_delayed_w)
-    ); 
-
-    mux_top # (
-        .NUM_SW_INST(NUM_SW_INST),
-        .W_WIDTH(FRAME_WIDTH)
-    ) DUT_FRAME_MUX (
-        .clk(clk),
-        .rst_n(rst_n),
-        .sel(rd_en_tx2fifo_delayed_w),
-        .data_in(frame_fifo2tx_w),
-        .data_out(mux2tx_w)
-    );
-
     tx_scheduler_top # (
         .NUM_SW_INST(NUM_SW_INST),
         .W_WIDTH(W_WIDTH),
@@ -124,7 +102,7 @@ module addr_decoder_top #(
         .full_in(full_fifo2tx_w),
         .sw_busy(sw_busy_rx2tx_w),//this maybe connected to the ack incoming from sw
         .last(last_fifo2tx_w),
-        .frame_in(mux2tx_w),
+        .frame_in(frame_fifo2tx_w),
 
         .op_id(op_id_tx2rx_w),
         .fifo_rd_en(rd_en_tx2fifo_w),
@@ -138,7 +116,7 @@ module addr_decoder_top #(
         .NUM_SW_INST(NUM_SW_INST),
         .W_WIDTH(W_WIDTH),
         .FIFO_SIZE(FIFO_SIZE)
-    ) DUT_RX_FSM (
+    ) DUT_RX_TOP (
         .clk(clk),
         .rst_n(rst_n),
         .sel_en(sel_en_out_w),//for determing which switch is busy

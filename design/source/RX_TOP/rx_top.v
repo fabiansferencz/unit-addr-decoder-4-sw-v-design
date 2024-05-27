@@ -1,4 +1,5 @@
 `include "rx_module.v"
+`include "rx_mux.v"
 
 module rx_top #(
     parameter NUM_SW_INST = 5,
@@ -17,7 +18,6 @@ module rx_top #(
 );
 
     wire [8*NUM_SW_INST-1:0] done_op_id2op_id_out;
-    wire [NUM_SW_INST-1:0] ack2mux_w;
 
     rx_module # (
         .NUM_SW_INST(NUM_SW_INST),
@@ -39,7 +39,7 @@ module rx_top #(
             fifo  # (
                 .FIFO_SIZE(FIFO_SIZE),
                 .W_WIDTH(8)
-            ) RX_FIFO(
+            ) DUT_RX_FIFO(
                 .clk(clk),
                 .rst_n(rst_n),
                 .fifo_en(1),
@@ -53,23 +53,14 @@ module rx_top #(
         end 
     endgenerate
 
-    delay # (
-        .WIDTH(NUM_SW_INST)
-    ) MUX_DELAY (
-        .clk(clk),
-        .rst_n(rst_n),
-        .in(ack),
-        .out(ack2mux_w)
-    ); 
-
-    mux_top # (
+    rx_mux # (
         .NUM_SW_INST(NUM_SW_INST),
         .W_WIDTH(W_WIDTH)
-    ) RX_MUX (
+    ) DUT_RX_MUX_TOP (
         .clk(clk),
         .rst_n(rst_n),
-        .sel(ack2mux_w),
-        .data_in(done_op_id2op_id_out),
-        .data_out(op_id_out)
+        .ack(ack),
+        .op_id(done_op_id2op_id_out),
+        .op_id_out(op_id_out)
     );
 endmodule
