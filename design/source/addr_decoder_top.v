@@ -1,9 +1,4 @@
-`include "bus_module.v"
-`include "./QUEUE_TOP/queue_top.v"
-`include "./RX_TOP/rx_top.v"
-`include "./MUX_TOP/mux_top.v"
-`include "delay_module.v"
-`include "./TX_TOP/tx_scheduler_top.v"
+`include "addr_decoder_top_filelist.v"
 
 module addr_decoder_top #(
     parameter READ_DELAY  = 1,
@@ -73,10 +68,10 @@ module addr_decoder_top #(
     genvar i;
     generate
         for(i = 0; i < NUM_SW_INST; i = i + 1) begin
-            queue_top  # (
+            fifo_top  # (
                 .FIFO_SIZE(FIFO_SIZE),
                 .W_WIDTH(FRAME_WIDTH)
-            ) DUT_AD_QUEUE_TOP (
+            ) DUT_AD_fifo_TOP (
                 .clk(clk),
                 .rst_n(rst_n),
                 .fifo_en(~(|full_fifo2tx_w)),

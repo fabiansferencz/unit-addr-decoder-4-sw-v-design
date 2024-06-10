@@ -1,7 +1,7 @@
 `include "fifo_module.v"
 `include "fifo_cnt.v"
 
-module queue_top # (
+module fifo_top # (
     parameter FIFO_SIZE = 64,
     parameter W_WIDTH = 32
 )(
@@ -40,5 +40,5 @@ module queue_top # (
         .last(last)
     );  
    
-endmodule : queue_top
+endmodule : fifo_top
 
