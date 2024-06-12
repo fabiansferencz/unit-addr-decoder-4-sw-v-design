@@ -4,6 +4,7 @@ module bus_module #(
   parameter FRAME_WIDTH = 32
 )(
   input clk, rst_n,
+  input full,
   input en_in,
   input wr_rd_op,
   input valid,
@@ -25,12 +26,12 @@ module bus_module #(
 
     case(m_state_ff)
       'h0: begin
-        if(en_in) begin
+        if(en_in && !full) begin
           m_state_nxt = 'h1;
         end 
       end 
       'h1: begin
-        if(valid) begin
+        if(valid && !full) begin
           m_state_nxt = 'h1;
           //{addr[21:17], wr_rd_s[16], wr_data[15:8], op_id[7:0]}
           frame_out_nxt = {11'd0, addr_in[4:0], wr_rd_op, wr_data_in, op_id};

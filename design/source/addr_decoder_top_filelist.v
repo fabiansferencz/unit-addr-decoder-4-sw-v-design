@@ -1,0 +1,6 @@
+`include "bus_module.v"
+`include "./FIFO_TOP/fifo_top.v"
+`include "./RX_TOP/rx_top.v"
+`include "./MUX_TOP/mux_top.v"
+`include "delay_module.v"
+`include "./TX_TOP/tx_scheduler_top.v"
